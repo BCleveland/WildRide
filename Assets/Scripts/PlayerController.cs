@@ -16,10 +16,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float m_JumpMaxTime = 0.6f;
     [SerializeField] private float m_JumpMaxChargeTime = 3.0f;
     [SerializeField] private float m_JumpMaxSquashAmount = 0.6f;
-    [Header("Slide Values")]
-    [SerializeField] private float m_SlideTransitionTime = 0.2f;
-    [SerializeField] private float m_SlideMaxRotationAngle =  -90.0f;
-    [SerializeField] private Vector3 m_SlideMaxPosition = Vector3.zero;
+	[Header("HalfPipe Values")]
+	[Tooltip("The amount to rotate while in the air, in degrees/sec")]
+	[SerializeField] private float m_AerialRotationalGravity = 90.0f;
     [Header("Components")]
     [SerializeField] private Transform m_Model = null;
     [SerializeField] private Rigidbody m_RagdollForcePoint = null;
@@ -31,43 +30,44 @@ public class PlayerController : MonoBehaviour
     private float m_CurrentAngle = 0.0f;
     private float m_PipeAngle = 0.0f;
     private PlayerState m_CurrentState = PlayerState.Base;
+    private HalfPipe m_CurrentHalfPipe = null;
+
+    private Vector3 m_GroundedPosition = Vector3.zero;
 
     private void Update()
     {
-        if(m_CurrentState == PlayerState.Halfpipe)
+        if(m_CurrentState == PlayerState.Base)
         {
-            HalfpipeLogic();
+            if(Input.GetKeyDown(KeyCode.Space))
+            {
+                StartCoroutine(Jump());
+            }
+        }
+        if(m_CurrentHalfPipe != null)
+        {
+            if(m_CurrentState == PlayerState.Base)
+            {
+                Turn();
+                HalfpipeGrounded(m_CurrentHalfPipe);
+            }
+            else if(m_CurrentState == PlayerState.PipeAerial)
+                HalfpipeAerial(m_CurrentHalfPipe);
         }
         else
         {
-            if(m_CurrentState == PlayerState.Dead) return;
-
-            if(m_CurrentState == PlayerState.Base)
-            {
-                if(Input.GetKeyDown(KeyCode.Space))
-                {
-                    StartCoroutine(Jump());
-                }
-                else if(Input.GetKeyDown(KeyCode.S))
-                {
-                    StartCoroutine(Slide());
-                }
-            }
             Turn();
             Move();
-            if(transform.position.x < -5)
-            {
-                transform.parent = m_HalfPipePivot.GetChild(0);
-                m_CurrentState = PlayerState.Halfpipe;
-                Vector3 temp = transform.localPosition;
-                temp.x = 0;
-                transform.localPosition = temp;
-            }
         }
+    }
+    private void ApplyVelocity(Vector3 velocity)
+    {
+        //Applies velocity to *grounded* pos
+        m_GroundedPosition += velocity * Time.deltaTime;
+        transform.position = m_GroundedPosition;
     }
     private void Move()
     {
-        transform.position += transform.forward * m_Speed * Time.deltaTime;
+        ApplyVelocity(transform.forward * m_Speed);
     }
     private void Turn()
     {
@@ -80,10 +80,9 @@ public class PlayerController : MonoBehaviour
         m_CurrentAngle += baseRotateAmount * mod;
         transform.Rotate(0.0f, baseRotateAmount * mod, 0.0f);
     }
-	private void Halfpipe2()
+	private void HalfpipeGrounded(HalfPipe pipe)
 	{
-		HalfPipe pipe = null;
-		Vector3 velocity = Vector3.zero;
+        Vector3 velocity = Quaternion.Euler(0,m_CurrentAngle,0) * Vector3.forward * m_Speed;
 		Vector3 reletive = pipe.TransformDirToLocal(velocity);
 		pipe.AddVelocityToAngle(reletive);
 		//remove the x from the reletive velocity, as it has already been used
@@ -91,6 +90,47 @@ public class PlayerController : MonoBehaviour
 		//back to regular space
 		velocity = pipe.TransformDirFromLocal(reletive);
 		//apply the remaining velocity
+		ApplyVelocity(velocity);
+		//is this the right order? TODO
+		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0,m_CurrentAngle,0);
+        transform.position = m_GroundedPosition + pipe.GetTestPos();
+
+        if(pipe.CrossedJumpThreshhold)
+        {
+            pipe.SetAngle(90.0f);
+            m_CurrentState = PlayerState.PipeAerial;
+        }
+        else if(pipe.CrossedGroundThreshhold)
+        {
+            pipe.SetAngle(0.0f);
+            m_CurrentHalfPipe = null;
+            transform.rotation = Quaternion.Euler(0,m_CurrentAngle,0);
+            transform.position = m_GroundedPosition;
+        }
+	}
+	private void HalfpipeAerial(HalfPipe pipe)
+	{
+		//rotate player towards gravity
+		m_CurrentAngle += m_AerialRotationalGravity * Time.deltaTime * pipe.GetAerialRotationDirection();
+		//generate velocity(nothing else can modify this)
+		Vector3 velocity = transform.forward * m_Speed;
+		//apply full movement (not ramp local)
+        //manually applied to ignore grounded pos
+		transform.position += velocity * Time.deltaTime;
+        velocity.y = 0f;
+        m_GroundedPosition += velocity * Time.deltaTime;
+		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0,m_CurrentAngle,0);
+		//check if player is now back on the ramp
+        if(transform.position.y <= pipe.m_Pivot.position.y)
+        {
+            m_CurrentState = PlayerState.Base;
+        }
+	}
+	private void HalfpipeWhileJumping(HalfPipe pipe)
+	{
+		//Rotate the player based on the angle below them in worldspace
+		//if player has landed from the jump, setup the angle properly
+		//no velocity applied, as it is done elsewhere
 	}
     private void HalfpipeLogic()
     {
@@ -135,7 +175,7 @@ public class PlayerController : MonoBehaviour
     }
     private void OnCollisionEnter(Collision other) 
     {
-        if(other.gameObject.CompareTag("Hazard") && m_CurrentState != PlayerState.Sliding)
+        if(other.gameObject.CompareTag("Hazard"))
         {
             MassSetActive(m_ToDisableOnDie, false);
             MassSetActive(m_ToEnableOnDie, true);
@@ -144,44 +184,19 @@ public class PlayerController : MonoBehaviour
             StopAllCoroutines();
         }    
     }
+    private void OnTriggerEnter(Collider other) 
+    {
+        if(other.gameObject.CompareTag("Halfpipe"))
+        {
+            m_CurrentHalfPipe = other.GetComponent<HalfPipe>();
+        }    
+    }
     private void MassSetActive(GameObject[] objects, bool state)
     {
         for(int j = 0; j < objects.Length; j++)
         {
             objects[j].SetActive(state);
         }
-    }
-    private IEnumerator Slide()
-    {
-        m_CurrentState = PlayerState.Sliding;
-        float slideTime = 0.0f;
-        while(Input.GetKey(KeyCode.S) && slideTime < m_SlideTransitionTime)
-        {
-            slideTime += Time.deltaTime;
-            UpdateSlideRotation(slideTime/m_SlideTransitionTime);
-            yield return null;
-        }
-        if(slideTime >= m_SlideTransitionTime)
-        {
-            //is in slide
-            while(Input.GetKey(KeyCode.S))
-            {
-                yield return null;
-            }
-        }
-        while(slideTime > 0)
-        {
-            slideTime -= Time.deltaTime;
-            UpdateSlideRotation(slideTime/m_SlideTransitionTime);
-            yield return null;
-        }
-        m_CurrentState = PlayerState.Base;
-    }
-    private void UpdateSlideRotation(float percent)
-    {
-        float interpt = Interpolation.SmoothStep(percent);
-        m_Model.transform.localPosition = Vector3.Lerp(Vector3.zero, m_SlideMaxPosition, interpt);
-        m_Model.localRotation = Quaternion.Lerp(Quaternion.identity, Quaternion.Euler(m_SlideMaxRotationAngle, 0, 0), interpt);
     }
     private IEnumerator Jump()
     {

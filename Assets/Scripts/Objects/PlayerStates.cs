@@ -3,6 +3,5 @@
     Base,
     Dead,
     Jumping,
-    Sliding,
-    Halfpipe
+    PipeAerial
 }
