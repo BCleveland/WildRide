@@ -18,18 +18,17 @@ public class HalfPipe : MonoBehaviour
 	public void AddVelocityToAngle(Vector3 localVelocity)
 	{
 		float dist = m_XScale * Mathf.PI / 2f;
+		if(m_IsLeftFacing) 
+		{
+			localVelocity *= -1f;
+		}
 		m_CurrentAngle += Mathf.LerpUnclamped(0, 90, localVelocity.x*Time.deltaTime / dist);
 	}
-	public Vector3 TransformDirToLocal(Vector3 velocity)
+	public Vector3 ApplyVector(Vector3 velocity)
 	{
-		//TODO:this doesn't really work at other angles. X can be negative when it shouldnt?
-		//Look into vector projection
-		return Quaternion.LookRotation(transform.forward, transform.up) * velocity;
-	}
-	public Vector3 TransformDirFromLocal(Vector3 localVelocity)
-	{
-		return Quaternion.Inverse(Quaternion.LookRotation(transform.forward, transform.up))
-			* localVelocity;
+		float dirMod = m_IsLeftFacing ? -1.0f : 1.0f;
+		AddVelocityToAngle(Vector3.Project(velocity, transform.right * dirMod));
+		return Vector3.Project(velocity, transform.forward * dirMod);
 	}
 	public float GetAerialRotationDirection()
 	{

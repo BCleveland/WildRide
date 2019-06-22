@@ -83,16 +83,17 @@ public class PlayerController : MonoBehaviour
 	private void HalfpipeGrounded(HalfPipe pipe)
 	{
         Vector3 velocity = Quaternion.Euler(0,m_CurrentAngle,0) * Vector3.forward * m_Speed;
-		Vector3 reletive = pipe.TransformDirToLocal(velocity);
+		/*Vector3 reletive = pipe.TransformDirToLocal(velocity);
 		pipe.AddVelocityToAngle(reletive);
 		//remove the x from the reletive velocity, as it has already been used
 		reletive.x = 0;
 		//back to regular space
-		velocity = pipe.TransformDirFromLocal(reletive);
+		velocity = pipe.TransformDirFromLocal(reletive);*/
+        velocity = pipe.ApplyVector(velocity);
 		//apply the remaining velocity
 		ApplyVelocity(velocity);
 		//is this the right order? TODO
-		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0,m_CurrentAngle,0);
+		transform.rotation = pipe.GetRotation() * Quaternion.Euler(-20f,m_CurrentAngle,0);
         transform.position = m_GroundedPosition + pipe.GetTestPos();
 
         if(pipe.CrossedJumpThreshhold)
