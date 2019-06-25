@@ -93,8 +93,8 @@ public class PlayerController : MonoBehaviour
 		//apply the remaining velocity
 		ApplyVelocity(velocity);
 		//is this the right order? TODO
-		transform.rotation = pipe.GetRotation() * Quaternion.Euler(-20f,m_CurrentAngle,0);
-        transform.position = m_GroundedPosition + pipe.GetTestPos();
+		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0, m_CurrentAngle, 0);
+		transform.position = m_GroundedPosition + pipe.GetTestPos();
 
         if(pipe.CrossedJumpThreshhold)
         {
@@ -120,9 +120,9 @@ public class PlayerController : MonoBehaviour
 		transform.position += velocity * Time.deltaTime;
         velocity.y = 0f;
         m_GroundedPosition += velocity * Time.deltaTime;
-		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0,m_CurrentAngle,0);
+		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0, m_CurrentAngle, 0);
 		//check if player is now back on the ramp
-        if(transform.position.y <= pipe.m_Pivot.position.y)
+		if (transform.position.y <= pipe.m_Pivot.position.y)
         {
             m_CurrentState = PlayerState.Base;
         }
