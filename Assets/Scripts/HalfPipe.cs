@@ -37,14 +37,13 @@ public class HalfPipe : MonoBehaviour
 	public Quaternion GetRotation()
 	{
 		float yRot = transform.eulerAngles.y;
-		if (m_IsLeftFacing) yRot += 180;
 		return
 			  Quaternion.Euler(0, yRot, 0)
-			* Quaternion.Euler(0, 0, m_CurrentAngle * (m_IsLeftFacing ? -1 : 1))
-			* Quaternion.Inverse(Quaternion.Euler(0, -yRot, 0));
+			* Quaternion.Euler(0, 0, m_CurrentAngle)
+			* Quaternion.Euler(0, -yRot, 0);
 	}
 	public Vector3 GetTestPos()
 	{
-		return (Vector3.up*m_XScale + Quaternion.Euler(0,0,m_CurrentAngle * (m_IsLeftFacing ? -1 : 1)) * Vector3.down*m_XScale);
+		return (Vector3.up*m_XScale + GetRotation() * Vector3.down*m_XScale);
 	}
 }
