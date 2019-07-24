@@ -28,6 +28,11 @@ public class HalfPipe : MonoBehaviour
 	{
 		float dirMod = m_IsLeftFacing ? -1.0f : 1.0f;
 		AddVelocityToAngle(Vector3.Project(velocity, transform.right * dirMod));
+		return ProjectAlongForward(velocity);
+	}
+	public Vector3 ProjectAlongForward(Vector3 velocity)
+	{
+		float dirMod = m_IsLeftFacing ? -1.0f : 1.0f;
 		return Vector3.Project(velocity, transform.forward * dirMod);
 	}
 	public float GetAerialRotationDirection()
@@ -45,5 +50,31 @@ public class HalfPipe : MonoBehaviour
 	public Vector3 GetTestPos()
 	{
 		return (Vector3.up*m_XScale + GetRotation() * Vector3.down*m_XScale);
+	}
+	public void SetAngleToAirbornePos(Vector3 playerPos)
+	{
+		m_CurrentAngle = Mathf.Lerp(0, 90, Interpolation.CircularIn(GetAirborneDelta(playerPos)));
+	}
+	public Quaternion GetAirborneRotation(Vector3 playerPos)
+	{
+		float yRot = transform.eulerAngles.y;
+		float desiredAngle = Mathf.Lerp(0, 90, Interpolation.CircularIn(GetAirborneDelta(playerPos)));
+		return
+			  Quaternion.Euler(0, yRot, 0)
+			* Quaternion.Euler(0, 0, desiredAngle)
+			* Quaternion.Euler(0, -yRot, 0);
+	}
+	public float GetLandingHeight(Vector3 playerPos)
+	{
+		return Interpolation.CircularIn(GetAirborneDelta(playerPos)) * m_XScale;
+	}
+	private float GetAirborneDelta(Vector3 pos)
+	{
+		//get reletive position
+		Vector3 reletivePos = pos - transform.position;
+		//Find pos in local x space
+		//where local x (0, 3]
+		Vector3 projected = Vector3.Project(reletivePos, transform.right);
+		return Mathf.Clamp01((m_IsLeftFacing ? -1.0f : 1.0f) * projected.x / m_XScale);
 	}
 }

@@ -2,6 +2,6 @@
 {
     Base,
     Dead,
-    Jumping,
+    Airborne,
     PipeAerial
 }

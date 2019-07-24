@@ -10,10 +10,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float m_MaxRotation = 90f;
     [SerializeField] private float m_BackTurnMod = 1.0f;
     [Header("Jump Values")]
-    [SerializeField] private float m_JumpMinHeight = 1.0f;
-    [SerializeField] private float m_JumpMaxHeight = 5.0f;
-    [SerializeField] private float m_JumpMinTime = 0.4f;
-    [SerializeField] private float m_JumpMaxTime = 0.6f;
+    [SerializeField] private float m_JumpMinForce = 1.0f;
+    [SerializeField] private float m_JumpMaxForce = 5.0f;
+    [SerializeField] private float m_Gravity = 9.8f;
     [SerializeField] private float m_JumpMaxChargeTime = 3.0f;
     [SerializeField] private float m_JumpMaxSquashAmount = 0.6f;
 	[Header("HalfPipe Values")]
@@ -24,23 +23,30 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Rigidbody m_RagdollForcePoint = null;
     [SerializeField] private GameObject[] m_ToDisableOnDie = null;
     [SerializeField] private GameObject[] m_ToEnableOnDie = null;
-    [Header("Debug Links")]
-    [SerializeField] private Transform m_HalfPipePivot = null;
 
-    private float m_CurrentAngle = 0.0f;
-    private float m_PipeAngle = 0.0f;
     private PlayerState m_CurrentState = PlayerState.Base;
-    private HalfPipe m_CurrentHalfPipe = null;
-
     private Vector3 m_GroundedPosition = Vector3.zero;
+    private float m_CurrentAngle = 0.0f;
+    private Vector3 m_AirVelocity = Vector3.zero;
 
+
+    private HalfPipe m_CurrentHalfPipe = null;
+/*
+
+    Current TODO list:
+    Controls:
+        Ground -> Jump -> Land on ramp jitter, angle is undershot
+
+    Mechanics:
+        Basic hazards
+ */
     private void Update()
     {
         if(m_CurrentState == PlayerState.Base)
         {
             if(Input.GetKeyDown(KeyCode.Space))
             {
-                StartCoroutine(Jump());
+                StartCoroutine(JumpCharge());
             }
         }
         if(m_CurrentHalfPipe != null)
@@ -52,11 +58,24 @@ public class PlayerController : MonoBehaviour
             }
             else if(m_CurrentState == PlayerState.PipeAerial)
                 HalfpipeAerial(m_CurrentHalfPipe);
+            else if(m_CurrentState == PlayerState.Airborne)
+            {
+                Turn();
+                MoveAirHalfpipe();
+            }
         }
         else
         {
-            Turn();
-            Move();
+            if(m_CurrentState == PlayerState.Base)
+            {
+                Turn();
+                Move();
+            }
+            else if(m_CurrentState == PlayerState.Airborne)
+            {
+                Turn();
+                MoveAir();
+            }
         }
     }
     private void ApplyVelocity(Vector3 velocity)
@@ -71,28 +90,70 @@ public class PlayerController : MonoBehaviour
     }
     private void Turn()
     {
+        float worldForwardDir = -26.187f;
+        float forwardModAngle = m_CurrentAngle - worldForwardDir;
+
         float baseRotateAmount = Input.GetAxis("Horizontal") * m_BaseRotationSpeed * Time.deltaTime;;
         float mod = 1.0f;
-        if(Mathf.Abs(m_CurrentAngle) < Mathf.Abs(baseRotateAmount + m_CurrentAngle))
+        if(Mathf.Abs(forwardModAngle) < Mathf.Abs(forwardModAngle + baseRotateAmount))
         {
-            mod = Interpolation.QuinticOut(1-Mathf.Abs(m_CurrentAngle + baseRotateAmount) / m_MaxRotation) * m_BackTurnMod;
+            mod = Interpolation.QuinticOut(1-Mathf.Abs(forwardModAngle + baseRotateAmount) / m_MaxRotation) * m_BackTurnMod;
         }
         m_CurrentAngle += baseRotateAmount * mod;
         transform.Rotate(0.0f, baseRotateAmount * mod, 0.0f);
     }
+    private void MoveAir()
+    {
+        //apply the current airial velocity
+        Vector3 velocity = m_AirVelocity;
+        //apply gravity to the velocity for next frame
+        m_AirVelocity += Vector3.down * m_Gravity * Time.deltaTime;
+        //check for landing
+        float desiredY = transform.position.y + (velocity.y * Time.deltaTime);
+        velocity.y = 0;
+        ApplyVelocity(velocity);
+        Vector3 pos = transform.position;
+        pos.y = desiredY;
+        if(pos.y < 0)
+        {
+            pos.y = 0;
+            m_CurrentState = PlayerState.Base;
+        }
+        transform.position = pos;
+    }
+    private void MoveAirHalfpipe()
+    {
+        //apply the current airial velocity
+        Vector3 pos = transform.position;
+        pos += m_AirVelocity * Time.deltaTime;
+
+        //Apply to the grounded position
+        m_GroundedPosition += m_CurrentHalfPipe.ProjectAlongForward(m_AirVelocity) * Time.deltaTime;
+
+        //rotate
+		transform.rotation = m_CurrentHalfPipe.GetAirborneRotation(pos) * Quaternion.Euler(0, m_CurrentAngle, 0);
+        //apply gravity to the velocity for next frame
+        m_AirVelocity += Vector3.down * m_Gravity * Time.deltaTime;
+        //check for landing on halfpipe
+        m_CurrentHalfPipe.SetAngleToAirbornePos(pos);
+        float landingPos = m_CurrentHalfPipe.GetLandingHeight(pos);
+        if(pos.y < landingPos)
+        {
+            pos.y = landingPos;
+            m_CurrentState = PlayerState.Base;
+        }
+        if(m_CurrentHalfPipe.CrossedGroundThreshhold)
+        {
+            m_CurrentHalfPipe = null;
+        }
+        transform.position = pos;
+    }
 	private void HalfpipeGrounded(HalfPipe pipe)
 	{
         Vector3 velocity = Quaternion.Euler(0,m_CurrentAngle,0) * Vector3.forward * m_Speed;
-		/*Vector3 reletive = pipe.TransformDirToLocal(velocity);
-		pipe.AddVelocityToAngle(reletive);
-		//remove the x from the reletive velocity, as it has already been used
-		reletive.x = 0;
-		//back to regular space
-		velocity = pipe.TransformDirFromLocal(reletive);*/
         velocity = pipe.ApplyVector(velocity);
 		//apply the remaining velocity
 		ApplyVelocity(velocity);
-		//is this the right order? TODO
 		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0, m_CurrentAngle, 0);
 		transform.position = m_GroundedPosition + pipe.GetTestPos();
 
@@ -127,53 +188,6 @@ public class PlayerController : MonoBehaviour
             m_CurrentState = PlayerState.Base;
         }
 	}
-	private void HalfpipeWhileJumping(HalfPipe pipe)
-	{
-		//Rotate the player based on the angle below them in worldspace
-		//if player has landed from the jump, setup the angle properly
-		//no velocity applied, as it is done elsewhere
-	}
-    private void HalfpipeLogic()
-    {
-        //not in air
-        if(m_PipeAngle > -90.0f)
-        {
-            Turn();
-            //get the movement in terms of local space
-            Vector3 baseMovement = Quaternion.Euler(0,m_CurrentAngle,0) * Vector3.forward * m_Speed * Time.deltaTime;
-            //apply z to global z pos, apply x to rotation of pivot
-            //As player attempts to move from -5 to -8, rotate 90
-			//3f is x scale
-            m_PipeAngle += baseMovement.x * (90.0f/3f);
-            m_HalfPipePivot.rotation = Quaternion.Euler(0, 0, m_PipeAngle);
-            baseMovement.x = 0;
-            transform.position += baseMovement;
-        }
-        //is in air
-        else
-        {
-            //rotate player's y back towards the ground
-            m_CurrentAngle += 120.0f*Time.deltaTime;
-            transform.Rotate(0, 120.0f*Time.deltaTime, 0, Space.Self);
-            //move forward along local z
-            transform.position += transform.forward * m_Speed * Time.deltaTime;
-            //if player local x is negative, apply the negative amount to the euler rotation
-            if(transform.localPosition.x > 0)
-            {
-                m_PipeAngle += transform.localPosition.x * Time.deltaTime * 270 * 2;
-                m_HalfPipePivot.rotation = Quaternion.Euler(0, 0, m_PipeAngle);
-                transform.localPosition = new Vector3(0, transform.localPosition.y, transform.localPosition.z);
-            }
-        }
-
-        if(transform.position.x > -5)
-        {
-            transform.parent = null;
-            m_CurrentState = PlayerState.Base;
-            m_CurrentAngle = transform.localEulerAngles.y;
-            transform.rotation = Quaternion.Euler(0, m_CurrentAngle, 0);
-        }
-    }
     private void OnCollisionEnter(Collision other) 
     {
         if(other.gameObject.CompareTag("Hazard"))
@@ -199,10 +213,8 @@ public class PlayerController : MonoBehaviour
             objects[j].SetActive(state);
         }
     }
-    private IEnumerator Jump()
+    private IEnumerator JumpCharge()
     {
-        m_CurrentState = PlayerState.Jumping;
-        //charge
         float chargeTime = 0.0f;
         while(Input.GetKey(KeyCode.Space))
         {
@@ -213,27 +225,12 @@ public class PlayerController : MonoBehaviour
         }
         m_Model.localScale = Vector3.one;
 
-        //Jump
         float chargePercentage = Interpolation.CubicOut(chargeTime/m_JumpMaxChargeTime);
-        float upTime = Mathf.Lerp(m_JumpMinTime, m_JumpMaxTime, chargePercentage);
-        float peak = Mathf.Lerp(m_JumpMinHeight, m_JumpMaxHeight, chargePercentage);
-        for(float timer = 0.0f; timer < upTime; timer += Time.deltaTime)
-        {
-            yield return null;
-            Vector3 pos = transform.position;
-            pos.y = Mathf.Lerp(0.0f, peak, Interpolation.QuadraticOut(timer/upTime));
-            transform.position = pos;
-        }
-        for(float timer = upTime; timer > 0.0f; timer -= Time.deltaTime)
-        {
-            yield return null;
-            Vector3 pos = transform.position;
-            pos.y = Mathf.Lerp(0.0f, peak, Interpolation.QuadraticOut(timer/upTime));
-            transform.position = pos;
-        }
-        Vector3 resetPos = transform.position;
-        resetPos.y = 0;
-        transform.position = resetPos;
-        m_CurrentState = PlayerState.Base;
+        float force = Mathf.Lerp(m_JumpMinForce, m_JumpMaxForce, chargePercentage);
+        //calculate velocity from force
+        Vector3 velocity = transform.up * force;
+        velocity += transform.forward * m_Speed;
+        m_CurrentState = PlayerState.Airborne;
+        m_AirVelocity = velocity;
     }
 }
