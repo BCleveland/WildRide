@@ -24,11 +24,17 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private GameObject[] m_ToDisableOnDie = null;
     [SerializeField] private GameObject[] m_ToEnableOnDie = null;
 
+    System.Action[,] m_StateMachine = null;
     private PlayerState m_CurrentState = PlayerState.Base;
     private Vector3 m_GroundedPosition = Vector3.zero;
     private float m_CurrentAngle = 0.0f;
     private Vector3 m_AirVelocity = Vector3.zero;
     private HalfPipe m_CurrentHalfPipe = null;
+
+    private void Awake() 
+    {
+        SetupStateMachine();   
+    }
     private void Update()
     {
         if(m_CurrentState == PlayerState.Base)
@@ -38,34 +44,7 @@ public class PlayerController : MonoBehaviour
                 StartCoroutine(JumpCharge());
             }
         }
-        if(m_CurrentHalfPipe != null)
-        {
-            if(m_CurrentState == PlayerState.Base)
-            {
-                Turn();
-                HalfpipeGrounded(m_CurrentHalfPipe);
-            }
-            else if(m_CurrentState == PlayerState.PipeAerial)
-                HalfpipeAerial(m_CurrentHalfPipe);
-            else if(m_CurrentState == PlayerState.Airborne)
-            {
-                Turn();
-                MoveAirHalfpipe();
-            }
-        }
-        else
-        {
-            if(m_CurrentState == PlayerState.Base)
-            {
-                Turn();
-                Move();
-            }
-            else if(m_CurrentState == PlayerState.Airborne)
-            {
-                Turn();
-                MoveAir();
-            }
-        }
+        m_StateMachine[(int)m_CurrentState, (m_CurrentHalfPipe) == null ? 0 : 1]?.Invoke();
     }
     private void ApplyVelocity(Vector3 velocity)
     {
@@ -110,6 +89,7 @@ public class PlayerController : MonoBehaviour
         }
         transform.position = pos;
     }
+    //Air movement while above a half pipe (but not doing an aerial)
     private void MoveAirHalfpipe()
     {
         //apply the current airial velocity
@@ -159,6 +139,7 @@ public class PlayerController : MonoBehaviour
             transform.position = m_GroundedPosition;
         }
 	}
+    //doing an aerial (sideways jump)
 	private void HalfpipeAerial(HalfPipe pipe)
 	{
 		//rotate player towards gravity
@@ -177,6 +158,7 @@ public class PlayerController : MonoBehaviour
             m_CurrentState = PlayerState.Base;
         }
 	}
+
     private void OnCollisionEnter(Collision other) 
     {
         if(other.gameObject.CompareTag("Hazard"))
@@ -222,4 +204,16 @@ public class PlayerController : MonoBehaviour
         m_CurrentState = PlayerState.Airborne;
         m_AirVelocity = velocity;
     }
+    private void SetupStateMachine()
+    {
+        m_StateMachine = new System.Action[4,2];
+
+        m_StateMachine[(int)PlayerState.Base,0] = () => {Turn(); Move();};
+        m_StateMachine[(int)PlayerState.Airborne, 0] = () => {Turn(); MoveAir();};
+
+        m_StateMachine[(int)PlayerState.Base, 1] = () => {Turn(); HalfpipeGrounded(m_CurrentHalfPipe);};
+        m_StateMachine[(int)PlayerState.Airborne, 1] = () => {Turn(); MoveAirHalfpipe();};
+        m_StateMachine[(int)PlayerState.PipeAerial, 1] = () => {HalfpipeAerial(m_CurrentHalfPipe);};
+    }
+
 }
