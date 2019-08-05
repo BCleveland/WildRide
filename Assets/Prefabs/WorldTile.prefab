@@ -48,8 +48,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 657e44a9f6e46564186eface600201bd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_tileStart: {fileID: 677386660590976473}
-  m_tileEnd: {fileID: 8222738272765919563}
+  m_TileStart: {fileID: 677386660590976473}
+  m_TileEnd: {fileID: 8222738272765919563}
 --- !u!1 &8347154273301343505
 GameObject:
   m_ObjectHideFlags: 0
@@ -274,15 +274,15 @@ PrefabInstance:
       propertyPath: m_LocalScale.z
       value: 1.2
       objectReference: {fileID: 0}
-    - target: {fileID: 5519372224734766426, guid: 7ac73ce815867ad49869bd4010497e6d,
-        type: 3}
-      propertyPath: m_IsLeftFacing
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 1885439335497503769, guid: 7ac73ce815867ad49869bd4010497e6d,
         type: 3}
       propertyPath: m_LocalScale.z
       value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 5519372224734766426, guid: 7ac73ce815867ad49869bd4010497e6d,
+        type: 3}
+      propertyPath: m_IsLeftFacing
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4018909888435139813, guid: 7ac73ce815867ad49869bd4010497e6d,
         type: 3}

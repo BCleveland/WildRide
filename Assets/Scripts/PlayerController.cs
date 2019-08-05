@@ -28,18 +28,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 m_GroundedPosition = Vector3.zero;
     private float m_CurrentAngle = 0.0f;
     private Vector3 m_AirVelocity = Vector3.zero;
-
-
     private HalfPipe m_CurrentHalfPipe = null;
-/*
-
-    Current TODO list:
-    Controls:
-        Ground -> Jump -> Land on ramp jitter, angle is undershot
-
-    Mechanics:
-        Basic hazards
- */
     private void Update()
     {
         if(m_CurrentState == PlayerState.Base)
@@ -90,7 +79,7 @@ public class PlayerController : MonoBehaviour
     }
     private void Turn()
     {
-        float worldForwardDir = -26.187f;
+        float worldForwardDir = LevelManager.Instance.WorldAngle;
         float forwardModAngle = m_CurrentAngle - worldForwardDir;
 
         float baseRotateAmount = Input.GetAxis("Horizontal") * m_BaseRotationSpeed * Time.deltaTime;;
@@ -127,15 +116,15 @@ public class PlayerController : MonoBehaviour
         Vector3 pos = transform.position;
         pos += m_AirVelocity * Time.deltaTime;
 
+        m_CurrentHalfPipe.SetAngleToAirbornePos(pos);
         //Apply to the grounded position
         m_GroundedPosition += m_CurrentHalfPipe.ProjectAlongForward(m_AirVelocity) * Time.deltaTime;
 
         //rotate
-		transform.rotation = m_CurrentHalfPipe.GetAirborneRotation(pos) * Quaternion.Euler(0, m_CurrentAngle, 0);
+		transform.rotation = m_CurrentHalfPipe.GetRotation() * Quaternion.Euler(0, m_CurrentAngle, 0);
         //apply gravity to the velocity for next frame
         m_AirVelocity += Vector3.down * m_Gravity * Time.deltaTime;
         //check for landing on halfpipe
-        m_CurrentHalfPipe.SetAngleToAirbornePos(pos);
         float landingPos = m_CurrentHalfPipe.GetLandingHeight(pos);
         if(pos.y < landingPos)
         {
@@ -155,7 +144,7 @@ public class PlayerController : MonoBehaviour
 		//apply the remaining velocity
 		ApplyVelocity(velocity);
 		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0, m_CurrentAngle, 0);
-		transform.position = m_GroundedPosition + pipe.GetTestPos();
+		transform.position = m_GroundedPosition + pipe.GetAnglePosition();
 
         if(pipe.CrossedJumpThreshhold)
         {
@@ -183,7 +172,7 @@ public class PlayerController : MonoBehaviour
         m_GroundedPosition += velocity * Time.deltaTime;
 		transform.rotation = pipe.GetRotation() * Quaternion.Euler(0, m_CurrentAngle, 0);
 		//check if player is now back on the ramp
-		if (transform.position.y <= pipe.m_Pivot.position.y)
+		if (transform.position.y <= /*pipe.m_Pivot.position.y*/3)
         {
             m_CurrentState = PlayerState.Base;
         }
