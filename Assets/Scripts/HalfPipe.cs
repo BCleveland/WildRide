@@ -23,10 +23,7 @@ public class HalfPipe : MonoBehaviour
 	public void AddVelocityToAngle(Vector3 localVelocity)
 	{
 		float dist = m_XScale * Mathf.PI / 2f;
-		if(m_IsLeftFacing) 
-		{
-			localVelocity *= -1f;
-		}
+		localVelocity = Quaternion.Euler(0, -m_Rotation, 0) * localVelocity;
 		m_CurrentAngle += Mathf.LerpUnclamped(0, 90, localVelocity.x*Time.deltaTime / dist);
 	}
 	//Consumes the needed part of the velocity and returns the unused portion 
