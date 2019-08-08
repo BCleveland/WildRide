@@ -28,10 +28,13 @@ public class LevelManager : MonoBehaviour
      }
      private void Update() 
      {
-         if(m_WorldTiles[m_CurrentTile].GetPlayerPercent(m_Player.transform.position) > 1)
+         if(m_CurrentTile != m_WorldTiles.Length-1)
          {
-             StartCoroutine(LerpBetweenTiles(m_WorldTiles[m_CurrentTile], m_WorldTiles[m_CurrentTile+1]));
-             m_CurrentTile++;
+            if(m_WorldTiles[m_CurrentTile].GetPlayerPercent(m_Player.transform.position) > 1)
+            {
+                StartCoroutine(LerpBetweenTiles(m_WorldTiles[m_CurrentTile], m_WorldTiles[m_CurrentTile+1]));
+                m_CurrentTile++;
+            }
          }
          if(!InTransition)
          {

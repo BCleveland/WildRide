@@ -159,6 +159,17 @@ public class PlayerController : MonoBehaviour
         }
 	}
 
+    public void OnNoGround()
+    {
+        if(m_CurrentState == PlayerState.Base)
+        {
+            MassSetActive(m_ToDisableOnDie, false);
+            MassSetActive(m_ToEnableOnDie, true);
+            m_CurrentState = PlayerState.Dead;
+            m_RagdollForcePoint.AddForce(transform.forward*100, ForceMode.Impulse);
+            StopAllCoroutines();
+        }
+    }
     private void OnCollisionEnter(Collision other) 
     {
         if(other.gameObject.CompareTag("Hazard"))
