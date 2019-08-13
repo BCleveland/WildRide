@@ -8,6 +8,7 @@ public class WorldTile : MonoBehaviour
     [SerializeField] private Transform m_TileEnd = null;
     
     [SerializeField] public float RotationMod;
+    [SerializeField] private Setpieces.Setpiece[] m_Setpieces = null;
 
     private float m_totalDistance = 0.0f;
     private void Awake() 
@@ -23,7 +24,17 @@ public class WorldTile : MonoBehaviour
         Vector3 total = m_TileEnd.position - m_TileStart.position;
         Vector3 reletivePlayerPos = playerPos - m_TileStart.position;
         Vector3 projected = Vector3.Project(reletivePlayerPos, total);
-        return projected.magnitude / m_totalDistance;
+        float percent = projected.magnitude / m_totalDistance;
+        //TODO: Do not do this here dear god
+        if(m_Setpieces != null)
+        {
+            foreach (var set in m_Setpieces)
+            {
+                if(set.TilePercentActivation < percent && !set.Activated) set.ActivateSetpiece();
+            }
+        }
+
+        return percent;
     }
     public float GetWorldAngleAtPercent()
     {

@@ -6,7 +6,6 @@ public class LevelManager : MonoBehaviour
 {
     public static LevelManager Instance;
     [SerializeField] private CameraController m_Camera;
-    [SerializeField] private Setpieces.Setpiece m_Setpiece;
     [SerializeField] private PlayerController m_Player;
     [SerializeField] private WorldTile[] m_WorldTiles;
 
@@ -28,14 +27,19 @@ public class LevelManager : MonoBehaviour
      }
      private void Update() 
      {
-         if(m_CurrentTile != m_WorldTiles.Length-1)
-         {
-            if(m_WorldTiles[m_CurrentTile].GetPlayerPercent(m_Player.transform.position) > 1)
+        if(GameController.IsGameOver) return;
+        if(m_WorldTiles[m_CurrentTile].GetPlayerPercent(m_Player.transform.position) > 1)
+        {
+            if(m_CurrentTile == m_WorldTiles.Length-1)
+            {
+                GameController.Instance.GameWin();
+            }
+            else
             {
                 StartCoroutine(LerpBetweenTiles(m_WorldTiles[m_CurrentTile], m_WorldTiles[m_CurrentTile+1]));
                 m_CurrentTile++;
             }
-         }
+        }
          if(!InTransition)
          {
              m_Camera.transform.position = m_Camera.GetPositionOnSection(CurrentTile);

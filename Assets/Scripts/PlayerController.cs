@@ -163,23 +163,25 @@ public class PlayerController : MonoBehaviour
     {
         if(m_CurrentState == PlayerState.Base)
         {
-            MassSetActive(m_ToDisableOnDie, false);
-            MassSetActive(m_ToEnableOnDie, true);
-            m_CurrentState = PlayerState.Dead;
+            Die();
             m_RagdollForcePoint.AddForce(transform.forward*100, ForceMode.Impulse);
-            StopAllCoroutines();
         }
     }
     private void OnCollisionEnter(Collision other) 
     {
         if(other.gameObject.CompareTag("Hazard"))
         {
-            MassSetActive(m_ToDisableOnDie, false);
-            MassSetActive(m_ToEnableOnDie, true);
-            m_CurrentState = PlayerState.Dead;
+            Die();
             m_RagdollForcePoint.AddForce(Vector3.one*100, ForceMode.Impulse);
-            StopAllCoroutines();
         }    
+    }
+    private void Die()
+    {
+        MassSetActive(m_ToDisableOnDie, false);
+        MassSetActive(m_ToEnableOnDie, true);
+        m_CurrentState = PlayerState.Dead;
+        StopAllCoroutines();
+        GameController.Instance.GameLose();
     }
     private void OnTriggerEnter(Collider other) 
     {

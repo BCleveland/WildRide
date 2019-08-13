@@ -9,10 +9,11 @@ namespace Setpieces
         [SerializeField] private GameObject m_RockPrefab = null;
         public override void ActivateSetpiece()
         {
-            for(int j = 0; j < 5; j++)
+            Activated = true;
+            for(int j = 0; j < 15; j++)
             {
                 Vector3 spawnPos = transform.position + Random.onUnitSphere * 3;
-                Instantiate(m_RockPrefab, spawnPos, Quaternion.identity);
+                Instantiate(m_RockPrefab, spawnPos, Random.rotation);
             }
         }
     }
