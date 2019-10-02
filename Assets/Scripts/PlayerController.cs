@@ -45,6 +45,14 @@ public class PlayerController : MonoBehaviour
             }
         }
         m_StateMachine[(int)m_CurrentState, (m_CurrentHalfPipe) == null ? 0 : 1]?.Invoke();
+        if(Input.GetKeyDown(KeyCode.H))
+        {
+            FXManager.Instance.SetTargetTimeScale(0.6f);
+        }
+        if(Input.GetKeyUp(KeyCode.H))
+        {
+            FXManager.Instance.SetTargetTimeScale(1.0f);
+        }
     }
     private void ApplyVelocity(Vector3 velocity)
     {
@@ -164,7 +172,7 @@ public class PlayerController : MonoBehaviour
         if(m_CurrentState == PlayerState.Base)
         {
             Die();
-            m_RagdollForcePoint.AddForce(transform.forward*100, ForceMode.Impulse);
+            m_RagdollForcePoint.AddForce(transform.forward*30, ForceMode.Impulse);
         }
     }
     private void OnCollisionEnter(Collision other) 
@@ -172,7 +180,7 @@ public class PlayerController : MonoBehaviour
         if(other.gameObject.CompareTag("Hazard"))
         {
             Die();
-            m_RagdollForcePoint.AddForce(Vector3.one*100, ForceMode.Impulse);
+            m_RagdollForcePoint.AddForce(Vector3.one*30, ForceMode.Impulse);
         }    
     }
     private void Die()

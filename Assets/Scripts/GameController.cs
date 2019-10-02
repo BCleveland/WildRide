@@ -26,6 +26,7 @@ public class GameController : MonoBehaviour
     {
         StartCoroutine(GameoverLoop());
         CurrentState = GameState.Lose;
+        FXManager.Instance.OnDie();
     }
     private IEnumerator GameoverLoop()
     {

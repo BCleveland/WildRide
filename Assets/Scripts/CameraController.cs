@@ -5,6 +5,8 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     [SerializeField] private Transform m_PlayerTransform = null;
+    [SerializeField] private Transform m_PlayerRagdollTarget = null;
+    [SerializeField] private float m_RagdollFollowSpeed = 1.0f;
 
     private Vector3 m_PlayerOffset;
     private float m_XRot = 22.76f;
@@ -14,7 +16,14 @@ public class CameraController : MonoBehaviour
     }
     void Update()
     {
-        transform.rotation = Quaternion.Euler(m_XRot, LevelManager.Instance.WorldAngle, 0);
+        if(GameController.IsGameOver)
+        {
+            Vector3 dir = (m_PlayerRagdollTarget.position - transform.position).normalized;
+            transform.rotation = Quaternion.Lerp(transform.rotation, 
+                Quaternion.LookRotation(dir, Vector3.up), Time.deltaTime * m_RagdollFollowSpeed);
+        }
+        else
+            transform.rotation = Quaternion.Euler(m_XRot, LevelManager.Instance.WorldAngle, 0);
     }
     public Vector3 GetPositionOnSection(WorldTile tile)
     {
